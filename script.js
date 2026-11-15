@@ -1,4 +1,4 @@
-// --- KONFIGURASI WHITELIST & PIN DEFAULT GIAT ---
+// --- DAFTAR 7 NAMA GIAT YANG DIIZINKAN ---
 const GIAT_WHITELIST = [
     "bagus setya danuartha",
     "keyza callista agatha",
@@ -10,7 +10,7 @@ const GIAT_WHITELIST = [
 ];
 const GIAT_DEFAULT_PIN = "ambalan2026";
 
-// --- STATE APLIKASI & SESSION STORAGE ---
+// --- STATE APLIKASI ---
 let currentUser = {
     name: "",
     role: "",
@@ -18,7 +18,7 @@ let currentUser = {
     avatar: ""
 };
 
-let currentGpsCoords = "-7.0051, 110.4381 (Lokasi Sekolah)";
+let currentGpsCoords = "Lat: -7.0051, Long: 110.4381 (Area Sekolah)";
 
 let attendanceData = {
     todayStatus: false,
@@ -29,20 +29,20 @@ let attendanceData = {
             date: "Jumat, 13 Nov 2026",
             type: "Hadir",
             time: "06:45 WIB",
-            gps: "-7.0051, 110.4381",
+            gps: "Lat: -7.0051, Long: 110.4381",
             keterangan: "Hadir tepat waktu",
             photo: "https://placehold.co/600x450/dc2626/ffffff?text=Bukti+Pengibaran+13+Nov"
         }
     ]
 };
 
-// Data cadangan lokal jika dibuka tanpa server PHP
+// Data simulasi lokal otomatis aktif jika dibuka tanpa server PHP
 let localRekapData = [
-    { id: 1, nama_anggota: "Andika Pratama", id_nis: "DEW-P01", pasukan: "1. Petugas Pemimpin Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:45 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "-7.0051, 110.4381", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Andika+Pratama" },
-    { id: 2, nama_anggota: "Siti Rahma", id_nis: "DEW-P02", pasukan: "1. Petugas Pemimpin Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:48 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "-7.0052, 110.4380", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Siti+Rahma" },
-    { id: 3, nama_anggota: "Rezky Mahendra", id_nis: "DEW-K01", pasukan: "2. Petugas Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:42 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "-7.0050, 110.4382", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Rezky+Mahendra" },
-    { id: 4, nama_anggota: "Joko Santoso", id_nis: "DEW-K03", pasukan: "2. Petugas Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "-", status_kehadiran: "Izin", keterangan: "Izin mengikuti lomba tingkat kota", koordinat_gps: "-", foto_bukti: null },
-    { id: 5, nama_anggota: "Mega Wati", id_nis: "DEW-S01", pasukan: "3. Peserta", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:35 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "-7.0051, 110.4381", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Mega+Wati" }
+    { id: 1, nama_anggota: "Andika Pratama", id_nis: "DEW-P01", pasukan: "1. Petugas Pemimpin Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:45 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "Lat: -7.0051, Long: 110.4381", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Andika+Pratama" },
+    { id: 2, nama_anggota: "Siti Rahma", id_nis: "DEW-P02", pasukan: "1. Petugas Pemimpin Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:48 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "Lat: -7.0052, Long: 110.4380", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Siti+Rahma" },
+    { id: 3, nama_anggota: "Rezky Mahendra", id_nis: "DEW-K01", pasukan: "2. Petugas Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:42 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "Lat: -7.0050, Long: 110.4382", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Rezky+Mahendra" },
+    { id: 4, nama_anggota: "Joko Santoso", id_nis: "IZN-104", pasukan: "2. Petugas Pengibaran", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "-", status_kehadiran: "Izin", keterangan: "Izin mengikuti lomba tingkat kota", koordinat_gps: "Pengajuan Mandiri", foto_bukti: null },
+    { id: 5, nama_anggota: "Mega Wati", id_nis: "DEW-S01", pasukan: "3. Peserta", tanggal_kegiatan: "Jumat, 13 Nov 2026", jam_hadir: "06:35 WIB", status_kehadiran: "Hadir", keterangan: "Hadir tepat waktu", koordinat_gps: "Lat: -7.0051, Long: 110.4381", foto_bukti: "https://placehold.co/600x450/dc2626/ffffff?text=Mega+Wati" }
 ];
 
 let latestFetchedMembers = [];
@@ -50,13 +50,12 @@ let mediaStream = null;
 let schoolChartInstance = null;
 let schoolDonutInstance = null;
 
-// --- INISIALISASI SAAT HALAMAN DIMUAT ---
+// --- INISIALISASI ---
 document.addEventListener('DOMContentLoaded', () => {
     renderCalendarDays();
     restoreSession();
 });
 
-// --- PULIHKAN SESSION LOGIN AGAR TIDAK TER-LOGOUT SAAT REFRESH ---
 function restoreSession() {
     const savedSession = localStorage.getItem('ambalan_user_session');
     if (savedSession) {
@@ -132,7 +131,7 @@ function quickDemoLogin(role) {
     executeLoginSuccess(false);
 }
 
-// --- PROSES LOGIN + VALIDASI PIN ---
+// --- PROSES LOGIN ---
 async function handleLogin(e) {
     e.preventDefault();
     const role = document.getElementById('login-role-input').value;
@@ -162,7 +161,6 @@ async function handleLogin(e) {
             }
             verifiedName = result.user;
         } catch (error) {
-            // Fallback lokal jika dibuka tanpa XAMPP
             const isAuthorized = GIAT_WHITELIST.includes(name.toLowerCase());
             if (!isAuthorized) {
                 showToast(`Akses Ditolak! Nama "${name}" tidak terdaftar sebagai Giat.`, 'error');
@@ -271,13 +269,13 @@ function renderDewanDashboard() {
 
     const historyList = document.getElementById('dewan-history-list');
     historyList.innerHTML = '';
-    attendanceData.history.forEach((item, index) => {
-        const badgeCol = item.type === 'Hadir' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50';
+    attendanceData.history.forEach((item) => {
+        const badgeCol = item.type === 'Hadir' ? 'text-emerald-600 bg-emerald-50' : (item.type === 'Sakit' ? 'text-blue-600 bg-blue-50' : 'text-amber-600 bg-amber-50');
         const div = document.createElement('div');
         div.className = "p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-4";
         div.innerHTML = `
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm">
+                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm shrink-0">
                     <i class="fa-solid fa-calendar-day"></i>
                 </div>
                 <div>
@@ -285,16 +283,16 @@ function renderDewanDashboard() {
                     <div class="text-xs text-slate-500 mt-0.5">
                         <span class="px-2 py-0.5 rounded-md font-bold ${badgeCol}">${item.type}</span> • ${item.time}
                     </div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">${item.keterangan || ''}</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">${item.keterangan || ''}</div>
                 </div>
             </div>
-            ${item.photo ? `<button onclick="openPhotoPreview('${item.photo}', '${currentUser.name}', '${item.date} • ${item.time}', '${item.gps}')" class="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"><i class="fa-solid fa-image text-red-600"></i> Lihat Foto</button>` : '<span class="text-xs text-slate-400">Tanpa Lampiran</span>'}
+            ${item.photo ? `<button onclick="openPhotoPreview('${item.photo}', '${currentUser.name}', '${item.date} • ${item.time}', '${item.gps}')" class="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 shrink-0"><i class="fa-solid fa-image text-red-600"></i> Lihat Foto</button>` : '<span class="text-xs text-slate-400 shrink-0">Tanpa Foto</span>'}
         `;
         historyList.appendChild(div);
     });
 }
 
-// --- FITUR 1: KAMERA LIVE + GPS ASLI + CANVAS WATERMARK ---
+// --- KAMERA LIVE + GPS + CANVAS WATERMARK ---
 function openAttendanceModal() {
     document.getElementById('modal-camera').classList.remove('hidden');
     const now = new Date();
@@ -303,7 +301,6 @@ function openAttendanceModal() {
     const timeStr = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} • ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
     document.getElementById('wm-time').innerText = timeStr;
 
-    // Deteksi GPS Perangkat Secara Real-Time
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -334,7 +331,7 @@ async function startWebcam() {
         mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
         videoElement.srcObject = mediaStream;
     } catch (err) {
-        showToast("Kamera tidak terdeteksi, menggunakan mode tangkapan cadangan.", "info");
+        showToast("Kamera fisik tidak tersedia, menggunakan mode cadangan.", "info");
     }
 }
 
@@ -345,7 +342,6 @@ function stopWebcam() {
     }
 }
 
-// Menangkap Gambar Asli dari Video ke Canvas beserta Watermark
 function captureSnapshotWithWatermark() {
     const video = document.getElementById('webcam-video');
     const canvas = document.getElementById('snapshot-canvas');
@@ -359,16 +355,14 @@ function captureSnapshotWithWatermark() {
     if (video.readyState >= 2) {
         ctx.drawImage(video, 0, 0, width, height);
     } else {
-        // Fallback background jika tidak ada webcam fisik
         ctx.fillStyle = "#1E293B";
         ctx.fillRect(0, 0, width, height);
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 24px sans-serif";
+        ctx.font = "bold 22px sans-serif";
         ctx.fillText("ABSENSI PENGIBARAN AMBALAN", 30, height / 2);
     }
 
-    // Gambar Kotak Watermark di Bagian Bawah Foto
-    ctx.fillStyle = "rgba(0, 0, 0, 0.68)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.fillRect(16, height - 96, width - 32, 80);
 
     ctx.fillStyle = "#FFFFFF";
@@ -441,8 +435,10 @@ async function captureAndSubmitAttendance() {
     renderDewanDashboard();
 }
 
-// --- FITUR 2: PENGAJUAN IZIN / SAKIT MANDIRI OLEH DEWAN ---
+// --- PENGAJUAN IZIN / SAKIT MANDIRI ---
 function openIzinModal() {
+    document.getElementById('form-pengajuan-izin').reset();
+    clearIzinAttachment();
     document.getElementById('modal-izin').classList.remove('hidden');
 }
 
@@ -450,81 +446,131 @@ function closeIzinModal() {
     document.getElementById('modal-izin').classList.add('hidden');
 }
 
-function submitIzinForm(e) {
-    e.preventDefault();
-    const izinType = document.getElementById('izin-type-select').value;
-    const reason = document.getElementById('izin-reason-input').value.trim();
-    const fileInput = document.getElementById('izin-file-input');
-
-    const processSubmission = async (base64File) => {
-        const now = new Date();
-        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        const dateStr = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
-        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
-
-        try {
-            await fetch('api.php?action=submit_absen', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nama: currentUser.name,
-                    pasukan: currentUser.pasukan,
-                    tanggal: dateStr,
-                    jam: "-",
-                    status: izinType,
-                    keterangan: reason,
-                    gps: "Pengajuan Mandiri",
-                    foto: base64File
-                })
-            });
-        } catch (err) {
-            localRekapData.unshift({
-                id: Date.now(),
-                nama_anggota: currentUser.name,
-                id_nis: "DEW-IZIN",
-                pasukan: currentUser.pasukan,
-                tanggal_kegiatan: dateStr,
-                jam_hadir: "-",
-                status_kehadiran: izinType,
-                keterangan: reason,
-                koordinat_gps: "Pengajuan Mandiri",
-                foto_bukti: base64File
-            });
-        }
-
-        attendanceData.todayStatus = true;
-        attendanceData.todayType = izinType;
-        attendanceData.timeHadir = timeStr;
-        attendanceData.history.unshift({
-            date: dateStr,
-            type: izinType,
-            time: timeStr,
-            gps: "Pengajuan Mandiri",
-            keterangan: reason,
-            photo: base64File
-        });
-
-        showToast(`Pengajuan ${izinType} berhasil dikirim ke Giat!`, "success");
-        closeIzinModal();
-        renderDewanDashboard();
+function previewIzinAttachment(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('izin-attachment-preview-img').src = e.target.result;
+        document.getElementById('izin-attachment-preview-box').classList.remove('hidden');
     };
-
-    if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (ev) => processSubmission(ev.target.result);
-        reader.readAsDataURL(fileInput.files[0]);
-    } else {
-        processSubmission(null);
-    }
+    reader.readAsDataURL(file);
 }
 
-// --- FITUR 3: MODAL PREVIEW BUKTI FOTO ASLI ---
+function clearIzinAttachment() {
+    const fileInput = document.getElementById('izin-file-input');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('izin-attachment-preview-img').src = '';
+    document.getElementById('izin-attachment-preview-box').classList.add('hidden');
+}
+
+function compressImageFile(file, maxWidth = 800) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.75));
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function submitIzinForm(e) {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btn-submit-izin');
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...`;
+
+    const selectedRadio = document.querySelector('input[name="izin-status-radio"]:checked');
+    const statusIzin = selectedRadio ? selectedRadio.value : 'Izin';
+    const alasan = document.getElementById('izin-reason-input').value.trim();
+    const fileInput = document.getElementById('izin-file-input');
+
+    let lampiranBase64 = null;
+    if (fileInput.files && fileInput.files[0]) {
+        lampiranBase64 = await compressImageFile(fileInput.files[0]);
+    }
+
+    const now = new Date();
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const dateStr = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
+
+    try {
+        const response = await fetch('api.php?action=submit_absen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nama: currentUser.name,
+                pasukan: currentUser.pasukan,
+                tanggal: dateStr,
+                jam: "-",
+                status: statusIzin,
+                keterangan: alasan,
+                gps: "Pengajuan Mandiri (" + timeStr + ")",
+                foto: lampiranBase64
+            })
+        });
+        const resJson = await response.json();
+        if (resJson.status !== 'success') throw new Error(resJson.message);
+    } catch (err) {
+        localRekapData.unshift({
+            id: Date.now(),
+            nama_anggota: currentUser.name,
+            id_nis: "IZN-LOCAL",
+            pasukan: currentUser.pasukan,
+            tanggal_kegiatan: dateStr,
+            jam_hadir: "-",
+            status_kehadiran: statusIzin,
+            keterangan: alasan,
+            koordinat_gps: "Pengajuan Mandiri (" + timeStr + ")",
+            foto_bukti: lampiranBase64
+        });
+    }
+
+    attendanceData.todayStatus = true;
+    attendanceData.todayType = statusIzin;
+    attendanceData.timeHadir = timeStr;
+    attendanceData.history.unshift({
+        date: dateStr,
+        type: statusIzin,
+        time: timeStr,
+        gps: "Pengajuan Mandiri",
+        keterangan: alasan,
+        photo: lampiranBase64
+    });
+
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Kirim Pengajuan`;
+
+    showToast(`Pengajuan ${statusIzin} berhasil dikirim!`, "success");
+    closeIzinModal();
+    renderDewanDashboard();
+}
+
+// --- MODAL PREVIEW FOTO ---
 function openPhotoPreview(photoUrl, name, dateTime, gps) {
     document.getElementById('preview-photo-img').src = photoUrl;
-    document.getElementById('preview-photo-title').innerText = `Bukti Kehadiran: ${name}`;
+    document.getElementById('preview-photo-title').innerText = `Lampiran: ${name}`;
     document.getElementById('preview-photo-subtitle').innerText = dateTime;
-    document.getElementById('preview-photo-gps').innerHTML = `<i class="fa-solid fa-location-dot text-red-600"></i> ${gps || 'GPS Terverifikasi'}`;
+    document.getElementById('preview-photo-gps').innerHTML = `<i class="fa-solid fa-location-dot text-red-600"></i> ${gps || 'Terverifikasi'}`;
     document.getElementById('modal-photo-preview').classList.remove('hidden');
 }
 
@@ -557,7 +603,7 @@ function renderCalendarDays() {
     }
 }
 
-// --- DASHBOARD GIAT: FILTER, SEARCH, TABEL & GRAFIK DINAMIS ---
+// --- DASHBOARD GIAT ---
 async function renderGiatTable() {
     const selectedPasukan = document.getElementById('filter-pasukan-select').value;
     const selectedStatus  = document.getElementById('filter-status-select').value;
@@ -577,7 +623,6 @@ async function renderGiatTable() {
             : localRekapData.filter(item => item.pasukan === selectedPasukan);
     }
 
-    // Terapkan Filter Status & Pencarian Nama
     const filteredMembers = rawMembers.filter(m => {
         const matchStatus = (selectedStatus === 'SEMUA') || (m.status_kehadiran === selectedStatus);
         const matchName = !searchKeyword || m.nama_anggota.toLowerCase().includes(searchKeyword);
@@ -625,7 +670,8 @@ async function renderGiatTable() {
             <td class="p-4 text-center">
                 <div class="inline-flex rounded-xl p-1 bg-slate-100 gap-1">
                     <button onclick="changeMemberStatus(${m.id}, 'Hadir')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${status === 'Hadir' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">Hadir</button>
-                    <button onclick="changeMemberStatus(${m.id}, 'Izin')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${status === 'Izin' || status === 'Sakit' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">Izin</button>
+                    <button onclick="changeMemberStatus(${m.id}, 'Izin')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${status === 'Izin' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">Izin</button>
+                    <button onclick="changeMemberStatus(${m.id}, 'Sakit')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${status === 'Sakit' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">Sakit</button>
                     <button onclick="changeMemberStatus(${m.id}, 'Alpha')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${status === 'Alpha' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">Alpha</button>
                 </div>
             </td>
@@ -662,7 +708,6 @@ async function changeMemberStatus(dbId, newStatus) {
     showToast(`Status berhasil diubah menjadi ${newStatus}`, 'success');
 }
 
-// --- FITUR 4: GRAFIK DINAMIS DARI DATA NYATA ---
 function updateDynamicCharts(allMembers, hadir, izinSakit, alpha) {
     const pasukan1 = allMembers.filter(m => m.pasukan === "1. Petugas Pemimpin Pengibaran" && m.status_kehadiran === "Hadir").length;
     const pasukan2 = allMembers.filter(m => m.pasukan === "2. Petugas Pengibaran" && m.status_kehadiran === "Hadir").length;
@@ -713,7 +758,7 @@ function updateDynamicCharts(allMembers, hadir, izinSakit, alpha) {
     }
 }
 
-// --- FITUR 5: UNDUH EXCEL (.CSV) SUNGGUHAN ---
+// --- EKSPOR EXCEL (.CSV) & PRINT ---
 function exportToCSV() {
     if (!latestFetchedMembers || latestFetchedMembers.length === 0) {
         showToast("Tidak ada data untuk diekspor.", "error");

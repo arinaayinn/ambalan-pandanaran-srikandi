@@ -19,7 +19,7 @@ if ($conn->connect_error) {
 $action = $_GET['action'] ?? '';
 $input = json_decode(file_get_contents('php://input'), true);
 
-// 1. VALIDASI LOGIN GIAT + PIN KEAMANAN
+// 1. VALIDASI LOGIN GIAT (NAMA + PIN)
 if ($action === 'login_giat') {
     $nama = trim($input['nama'] ?? '');
     $pin  = trim($input['pin'] ?? '');
@@ -51,19 +51,18 @@ if ($action === 'login_giat') {
     $stmt->close();
 }
 
-// 2. SIMPAN ABSENSI HADIR ATAU PENGAJUAN IZIN/SAKIT DEWAN
+// 2. SIMPAN ABSENSI HADIR ATAU PENGAJUAN IZIN/SAKIT
 elseif ($action === 'submit_absen') {
     $nama    = trim($input['nama'] ?? '');
     $pasukan = trim($input['pasukan'] ?? '');
     $tanggal = trim($input['tanggal'] ?? '');
     $jam     = trim($input['jam'] ?? '-');
-    $status  = trim($input['status'] ?? 'Hadir'); // Bisa 'Hadir', 'Izin', atau 'Sakit'
+    $status  = trim($input['status'] ?? 'Hadir');
     $ket     = trim($input['keterangan'] ?? 'Hadir pengibaran');
     $gps     = trim($input['gps'] ?? '-');
     $foto    = $input['foto'] ?? null;
     $id_nis  = ($status === 'Hadir') ? "DEW-" . rand(100, 999) : "IZN-" . rand(100, 999);
 
-    // Validasi status yang diizinkan
     if (!in_array($status, ['Hadir', 'Izin', 'Sakit', 'Alpha'])) {
         $status = 'Izin';
     }
@@ -73,21 +72,21 @@ elseif ($action === 'submit_absen') {
 
     if ($stmt->execute()) {
         echo json_encode([
-            "status" => "success", 
-            "message" => "Pengajuan $status berhasil dikirim dan tersimpan di database!"
+            "status" => "success",
+            "message" => "Data $status berhasil disimpan ke database!"
         ]);
     } else {
         echo json_encode([
-            "status" => "error", 
-            "message" => "Gagal menyimpan pengajuan: " . $stmt->error
+            "status" => "error",
+            "message" => "Gagal menyimpan data: " . $stmt->error
         ]);
     }
     $stmt->close();
 }
-    
-// 3. AMBIL DATA REKAP & STATISTIK GRAFIK
+
+// 3. AMBIL DATA REKAP UNTUK GIAT
 elseif ($action === 'get_rekap') {
-    $pasukan = $_GET['pasukan'] ?? '';
+    $pasukan = $_GET['pasukan'] ?? 'SEMUA';
     
     if ($pasukan === 'SEMUA') {
         $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran ORDER BY id DESC");
@@ -120,19 +119,6 @@ elseif ($action === 'update_status') {
         echo json_encode(["status" => "success", "message" => "Status diperbarui."]);
     } else {
         echo json_encode(["status" => "error", "message" => "Gagal memperbarui status."]);
-    }
-    $stmt->close();
-}
-
-// 5. HAPUS DATA ABSENSI (ADMIN GIAT)
-elseif ($action === 'delete_absen') {
-    $id = intval($input['id'] ?? 0);
-    $stmt = $conn->prepare("DELETE FROM absensi_pengibaran WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Data dihapus."]);
-    } else {
-        echo json_encode(["status" => "error", "message" => "Gagal menghapus."]);
     }
     $stmt->close();
 }

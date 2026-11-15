@@ -53,27 +53,38 @@ if ($action === 'login_giat') {
 
 // 2. SIMPAN ABSENSI HADIR ATAU PENGAJUAN IZIN/SAKIT DEWAN
 elseif ($action === 'submit_absen') {
-    $nama    = $input['nama'] ?? '';
-    $pasukan = $input['pasukan'] ?? '';
-    $tanggal = $input['tanggal'] ?? '';
-    $jam     = $input['jam'] ?? '-';
-    $status  = $input['status'] ?? 'Hadir';
-    $ket     = $input['keterangan'] ?? 'Hadir pengibaran';
-    $gps     = $input['gps'] ?? '-';
-    $foto    = $input['foto'] ?? '';
-    $id_nis  = "DEW-" . rand(100, 999);
+    $nama    = trim($input['nama'] ?? '');
+    $pasukan = trim($input['pasukan'] ?? '');
+    $tanggal = trim($input['tanggal'] ?? '');
+    $jam     = trim($input['jam'] ?? '-');
+    $status  = trim($input['status'] ?? 'Hadir'); // Bisa 'Hadir', 'Izin', atau 'Sakit'
+    $ket     = trim($input['keterangan'] ?? 'Hadir pengibaran');
+    $gps     = trim($input['gps'] ?? '-');
+    $foto    = $input['foto'] ?? null;
+    $id_nis  = ($status === 'Hadir') ? "DEW-" . rand(100, 999) : "IZN-" . rand(100, 999);
+
+    // Validasi status yang diizinkan
+    if (!in_array($status, ['Hadir', 'Izin', 'Sakit', 'Alpha'])) {
+        $status = 'Izin';
+    }
 
     $stmt = $conn->prepare("INSERT INTO absensi_pengibaran (nama_anggota, id_nis, pasukan, tanggal_kegiatan, jam_hadir, status_kehadiran, keterangan, koordinat_gps, foto_bukti) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("sssssssss", $nama, $id_nis, $pasukan, $tanggal, $jam, $status, $ket, $gps, $foto);
 
     if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Data $status berhasil disimpan ke database!"]);
+        echo json_encode([
+            "status" => "success", 
+            "message" => "Pengajuan $status berhasil dikirim dan tersimpan di database!"
+        ]);
     } else {
-        echo json_encode(["status" => "error", "message" => "Gagal menyimpan data."]);
+        echo json_encode([
+            "status" => "error", 
+            "message" => "Gagal menyimpan pengajuan: " . $stmt->error
+        ]);
     }
     $stmt->close();
 }
-
+    
 // 3. AMBIL DATA REKAP & STATISTIK GRAFIK
 elseif ($action === 'get_rekap') {
     $pasukan = $_GET['pasukan'] ?? '';

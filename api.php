@@ -1,236 +1,178 @@
 <?php
 error_reporting(0);
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST');
+header('Access-Control-Allow-Headers: Content-Type');
 
 $host = "localhost";
 $user = "root";
 $pass = "";
 $db   = "db_absen_ambalan";
 
-$conn = new mysqli($host, $user, $pass, $db);
-
+$conn = new mysqli($host,$user, $pass,$db);
 if ($conn->connect_error) {
     header('Content-Type: application/json');
-    echo json_encode(["status" => "error", "message" => "Koneksi database gagal: " . $conn->connect_error]);
+    echo json_encode(["status" => "error", "message" => "Koneksi MySQL Gagal: " . $conn->connect_error]);
     exit;
 }
-
 $conn->set_charset("utf8mb4");
-$action = $_GET['action'] ?? '';
 
-// =========================================================================
-// ENDPOINT KHUSUS UNDUH FILE EXCEL (.XLS) LANGSUNG DARI DATABASE MYSQL
-// =========================================================================
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+// 1. EKSPOR EXCEL (.XLS)
 if ($action === 'export_excel') {
-    $pasukan = $_GET['pasukan'] ?? 'SEMUA';
-    $status  = $_GET['status'] ?? 'SEMUA';
+    $pasukan =$_GET['pasukan'] ?? 'SEMUA';
+    $status  =$_GET['status'] ?? 'SEMUA';
 
-    $filename = "Laporan_Absen_dan_Surat_Izin_Ambalan_" . date('Y-m-d_H-i') . ".xls";
     header("Content-Type: application/vnd.ms-excel; charset=utf-8");
-    header("Content-Disposition: attachment; filename=\"$filename\"");
-    header("Pragma: no-cache");
-    header("Expires: 0");
+    header("Content-Disposition: attachment; filename=\"Laporan_Absen_dan_Izin_Ambalan_" . date('Y-m-d_H-i') . ".xls\"");
 
     $sql = "SELECT * FROM absensi_pengibaran WHERE 1=1";
-    $params = [];
-    $types = "";
+    $params = [];$types = "";
 
-    if ($pasukan !== 'SEMUA' && !empty($pasukan)) {
-        $sql .= " AND pasukan = ?";
-        $params[] = $pasukan;
+    if ($pasukan !== 'SEMUA' && $pasukan !== '') {$sql .= " AND pasukan = ?";
+        $params[] =$pasukan;
         $types .= "s";
     }
-    if ($status !== 'SEMUA' && !empty($status)) {
-        $sql .= " AND status_kehadiran = ?";
-        $params[] = $status;
+    if ($status !== 'SEMUA' && $status !== '') {$sql .= " AND status_kehadiran = ?";
+        $params[] =$status;
         $types .= "s";
     }
     $sql .= " ORDER BY id DESC";
 
     $stmt = $conn->prepare($sql);
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
+    if (!empty($params)) $stmt->bind_param($types, ...$params);$stmt->execute();
+    $res =$stmt->get_result();
 
-    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
-    echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head>';
-    echo '<body>';
-    echo '<h3>REKAPITULASI ABSENSI PENGIBARAN & SURAT PENGAJUAN IZIN/SAKIT</h3>';
-    echo '<p>Dewan Ambalan Pandanaran Srikandi • Dicetak pada: ' . date('d-m-Y H:i') . ' WIB</p>';
-    echo '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;">';
-    echo '<thead>
-            <tr style="background-color:#DC2626; color:#FFFFFF; font-weight:bold;">
-                <th>No</th>
-                <th>ID / Kode</th>
-                <th>Nama Anggota</th>
-                <th>Pasukan</th>
-                <th>Tanggal Kegiatan</th>
-                <th>Jam Masuk</th>
-                <th>Status</th>
-                <th>Jenis Pengajuan</th>
-                <th>Isi / Alasan Surat Izin</th>
-                <th>Info Lokasi / Waktu Kirim</th>
-                <th>Lampiran Foto</th>
-                <th>Status Verifikasi Giat</th>
-            </tr>
-          </thead><tbody>';
-
+    echo '<table border="1" cellpadding="6" cellspacing="0">
+            <tr style="background:#DC2626;color:#FFF;font-weight:bold;">
+                <th>No</th><th>Kode</th><th>Nama Anggota</th><th>Pasukan</th>
+                <th>Tanggal</th><th>Jam</th><th>Status</th><th>Jenis Pengajuan</th>
+                <th>Alasan Surat Izin</th><th>Info/GPS</th><th>Verifikasi</th>
+            </tr>';
     $no = 1;
-    while ($row = $result->fetch_assoc()) {
-        $bgStatus = '#FFFFFF';
-        if ($row['status_kehadiran'] === 'Hadir') $bgStatus = '#D1FAE5';
-        elseif ($row['status_kehadiran'] === 'Izin') $bgStatus = '#FEF3C7';
-        elseif ($row['status_kehadiran'] === 'Sakit') $bgStatus = '#DBEAFE';
-        elseif ($row['status_kehadiran'] === 'Alpha') $bgStatus = '#FEE2E2';
-
-        $adaFoto = !empty($row['foto_bukti']) ? 'Terlampir di Sistem' : 'Tidak Ada';
-
-        echo '<tr>';
-        echo '<td align="center">' . $no++ . '</td>';
-        echo '<td>' . htmlspecialchars($row['id_nis']) . '</td>';
-        echo '<td><b>' . htmlspecialchars($row['nama_anggota']) . '</b></td>';
-        echo '<td>' . htmlspecialchars($row['pasukan']) . '</td>';
-        echo '<td>' . htmlspecialchars($row['tanggal_kegiatan']) . '</td>';
-        echo '<td align="center">' . htmlspecialchars($row['jam_hadir']) . '</td>';
-        echo '<td align="center" style="background-color:' . $bgStatus . '; font-weight:bold;">' . htmlspecialchars($row['status_kehadiran']) . '</td>';
-        echo '<td>' . htmlspecialchars($row['jenis_surat']) . '</td>';
-        echo '<td>' . htmlspecialchars($row['keterangan'] ?? '-') . '</td>';
-        echo '<td>' . htmlspecialchars($row['koordinat_gps'] ?? '-') . '</td>';
-        echo '<td align="center">' . $adaFoto . '</td>';
-        echo '<td align="center">' . htmlspecialchars($row['status_verifikasi']) . '</td>';
-        echo '</tr>';
+    while ($r =$res->fetch_assoc()) {
+        echo "<tr>
+                <td>{$no}</td>
+                <td>{$r['id_nis']}</td>
+                <td><b>" . htmlspecialchars($r['nama_anggota']) . "</b></td>
+                <td>" . htmlspecialchars($r['pasukan']) . "</td>
+                <td>" . htmlspecialchars($r['tanggal_kegiatan']) . "</td>
+                <td>" . htmlspecialchars($r['jam_hadir']) . "</td>
+                <td><b>{$r['status_kehadiran']}</b></td>
+                <td>" . htmlspecialchars($r['jenis_surat']) . "</td>
+                <td>" . htmlspecialchars($r['keterangan'] ?? '-') . "</td>
+                <td>" . htmlspecialchars($r['koordinat_gps'] ?? '-') . "</td>
+                <td>{$r['status_verifikasi']}</td>
+              </tr>";
+        $no++;
     }
-    echo '</tbody></table></body></html>';
-    $stmt->close();
-    $conn->close();
+    echo '</table>';
     exit;
 }
 
-// =========================================================================
-// ENDPOINT JSON API UNTUK DASHBOARD GIAT & DEWAN
-// =========================================================================
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST');
-header('Access-Control-Allow-Headers: Content-Type');
+$jsonBody = json_decode(file_get_contents('php://input'), true) ?? [];
+$data = !empty($_POST) ? $_POST :$jsonBody;
 
-$input = json_decode(file_get_contents('php://input'), true) ?? [];
-
-// 1. VALIDASI LOGIN GIAT
+// 2. LOGIN GIAT
 if ($action === 'login_giat') {
-    $nama = trim($input['nama'] ?? '');
-    $pin  = trim($input['pin'] ?? '');
-    
-    $stmt = $conn->prepare("SELECT id, nama_lengkap, pin_akses FROM giat_whitelist WHERE LOWER(TRIM(nama_lengkap)) = LOWER(?) LIMIT 1");
-    $stmt->bind_param("s", $nama);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-        if ($row['pin_akses'] === $pin) {
+    $nama = trim($data['nama'] ?? '');
+    $pin  = trim($data['pin'] ?? '');
+    $stmt =$conn->prepare("SELECT nama_lengkap, pin_akses FROM giat_whitelist WHERE LOWER(TRIM(nama_lengkap)) = LOWER(?) LIMIT 1");
+    $stmt->bind_param("s", $nama);$stmt->execute();
+    $res =$stmt->get_result();
+    if ($row =$res->fetch_assoc()) {
+        if ($row['pin_akses'] ===$pin) {
             echo json_encode(["status" => "success", "user" => $row['nama_lengkap']]);
         } else {
-            echo json_encode(["status" => "error", "message" => "PIN Keamanan Giat salah!"]);
+            echo json_encode(["status" => "error", "message" => "PIN Giat salah!"]);
         }
     } else {
-        echo json_encode(["status" => "error", "message" => "Akses Ditolak! Nama tidak terdaftar dalam 7 nama Giat."]);
+        echo json_encode(["status" => "error", "message" => "Nama tidak terdaftar sebagai Giat!"]);
     }
-    $stmt->close();
+    exit;
 }
 
-// 2. SIMPAN ABSENSI HADIR ATAU SURAT PENGAJUAN IZIN / SAKIT
-elseif ($action === 'submit_absen') {
-    $nama    = trim($input['nama'] ?? '');
-    $pasukan = trim($input['pasukan'] ?? '3. Peserta');
-    $tanggal = trim($input['tanggal'] ?? date('d M Y'));
-    $jam     = trim($input['jam'] ?? '-');
-    $status  = trim($input['status'] ?? 'Hadir');
-    $ket     = trim($input['keterangan'] ?? '');
-    $gps     = trim($input['gps'] ?? '-');
-    $foto    = $input['foto'] ?? null;
+// 3. SIMPAN ABSENSI HADIR ATAU SURAT IZIN / SAKIT
+if ($action === 'submit_absen') {
+    $nama    = trim($data['nama'] ?? '');
+    $pasukan = trim($data['pasukan'] ?? '3. Peserta');
+    $tanggal = trim($data['tanggal'] ?? date('d M Y'));
+    $jam     = trim($data['jam'] ?? '-');
+    $status  = trim($data['status'] ?? 'Izin');
+    $ket     = trim($data['keterangan'] ?? '');
+    $gps     = trim($data['gps'] ?? '-');
+    $foto    =$data['foto'] ?? null;
 
-    if (empty($nama)) {
-        echo json_encode(["status" => "error", "message" => "Nama anggota wajib diisi."]);
+    // Jika file gambar diunggah via input file FormData
+    if (isset($_FILES['file_surat']) && $_FILES['file_surat']['error'] === UPLOAD_ERR_OK) {$tmpName = $_FILES['file_surat']['tmp_name'];$mime    = mime_content_type($tmpName) ?: 'image/jpeg';$rawImg  = file_get_contents($tmpName);$foto    = 'data:' . $mime . ';base64,' . base64_encode($rawImg);
+    }
+
+    if ($nama === '') {
+        echo json_encode(["status" => "error", "message" => "Nama anggota tidak terbaca. Silakan login ulang."]);
         exit;
     }
 
-    if (!in_array($status, ['Hadir', 'Izin', 'Sakit', 'Alpha'])) {
-        $status = 'Izin';
-    }
+    if (!in_array($status, ['Hadir', 'Izin', 'Sakit', 'Alpha']))$status = 'Izin';
 
     $id_nis      = ($status === 'Hadir') ? "DEW-" . rand(100, 999) : "IZN-" . rand(100, 999);
     $jenis_surat = ($status === 'Hadir') ? "Absensi Kamera GPS" : "Surat Pengajuan $status";
     $verifikasi  = ($status === 'Hadir') ? "Disetujui" : "Menunggu";
 
-    $stmt = $conn->prepare("INSERT INTO absensi_pengibaran (nama_anggota, id_nis, pasukan, tanggal_kegiatan, jam_hadir, status_kehadiran, jenis_surat, keterangan, koordinat_gps, foto_bukti, status_verifikasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssssssss", $nama, $id_nis, $pasukan, $tanggal, $jam, $status, $jenis_surat, $ket, $gps, $foto, $verifikasi);
+    $stmt =$conn->prepare("INSERT INTO absensi_pengibaran (nama_anggota, id_nis, pasukan, tanggal_kegiatan, jam_hadir, status_kehadiran, jenis_surat, keterangan, koordinat_gps, foto_bukti, status_verifikasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssssssss", $nama, $id_nis,$pasukan, $tanggal,$jam, $status,$jenis_surat, $ket,$gps, $foto,$verifikasi);
 
     if ($stmt->execute()) {
         echo json_encode([
             "status" => "success",
-            "message" => "$jenis_surat atas nama $nama berhasil dikirim ke Database & Dashboard Giat!"
+            "message" => "$jenis_surat berhasil masuk ke Database & Dashboard Giat!"
         ]);
     } else {
-        echo json_encode(["status" => "error", "message" => "Gagal menyimpan ke database: " . $stmt->error]);
+        echo json_encode(["status" => "error", "message" => "SQL Error: " . $stmt->error]);
     }
-    $stmt->close();
+    exit;
 }
 
-// 3. AMBIL SELURUH DATA REKAP & SURAT IZIN UNTUK DASHBOARD GIAT
-elseif ($action === 'get_rekap') {
-    $pasukan = $_GET['pasukan'] ?? 'SEMUA';
-    
-    if ($pasukan === 'SEMUA' || empty($pasukan)) {
-        $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran ORDER BY id DESC");
+// 4. AMBIL REKAP UNTUK DASHBOARD GIAT
+if ($action === 'get_rekap') {
+    $pasukan =$_GET['pasukan'] ?? 'SEMUA';
+    if ($pasukan === 'SEMUA' \vert{}\vert{}$pasukan === '') {
+        $stmt =$conn->prepare("SELECT * FROM absensi_pengibaran ORDER BY id DESC");
     } else {
-        $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran WHERE pasukan = ? ORDER BY id DESC");
+        $stmt =$conn->prepare("SELECT * FROM absensi_pengibaran WHERE pasukan = ? ORDER BY id DESC");
         $stmt->bind_param("s", $pasukan);
     }
-    
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
-    }
-    echo json_encode(["status" => "success", "data" => $data]);
-    $stmt->close();
+    $stmt->execute();$res = $stmt->get_result();$rows = [];
+    while ($r =$res->fetch_assoc()) $rows[] =$r;
+    echo json_encode(["status" => "success", "data" => $rows]);
+    exit;
 }
 
-// 4. AMBIL RIWAYAT PRIBADI DEWAN
-elseif ($action === 'get_my_history') {
+// 5. AMBIL RIWAYAT DEWAN
+if ($action === 'get_my_history') {
     $nama = trim($_GET['nama'] ?? '');
-    $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran WHERE LOWER(TRIM(nama_anggota)) = LOWER(?) ORDER BY id DESC");
+    $stmt =$conn->prepare("SELECT * FROM absensi_pengibaran WHERE LOWER(TRIM(nama_anggota)) = LOWER(?) ORDER BY id DESC");
     $stmt->bind_param("s", $nama);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
-    }
-    echo json_encode(["status" => "success", "data" => $data]);
-    $stmt->close();
+    $stmt->execute();$res = $stmt->get_result();$rows = [];
+    while ($r =$res->fetch_assoc()) $rows[] =$r;
+    echo json_encode(["status" => "success", "data" => $rows]);
+    exit;
 }
 
-// 5. UPDATE STATUS KEHADIRAN / SETUJUI SURAT IZIN OLEH GIAT
-elseif ($action === 'update_status') {
-    $id     = intval($input['id'] ?? 0);
-    $status = $input['status'] ?? 'Hadir';
+// 6. UPDATE STATUS / SETUJUI SURAT OLEH GIAT
+if ($action === 'update_status') {
+    $id     = intval($data['id'] ?? 0);
+    $status =$data['status'] ?? 'Izin';
     $jam    = ($status === 'Hadir') ? date("H:i") . " WIB" : "-";
 
-    $stmt = $conn->prepare("UPDATE absensi_pengibaran SET status_kehadiran = ?, jam_hadir = ?, status_verifikasi = 'Disetujui' WHERE id = ?");
-    $stmt->bind_param("ssi", $status, $jam, $id);
-
+    $stmt =$conn->prepare("UPDATE absensi_pengibaran SET status_kehadiran = ?, jam_hadir = ?, status_verifikasi = 'Disetujui' WHERE id = ?");
+    $stmt->bind_param("ssi", $status, $jam,$id);
     if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Status diperbarui & diverifikasi Giat."]);
+        echo json_encode(["status" => "success", "message" => "Surat / status telah diverifikasi Giat."]);
     } else {
-        echo json_encode(["status" => "error", "message" => "Gagal memperbarui status."]);
+        echo json_encode(["status" => "error", "message" => "Gagal update status."]);
     }
-    $stmt->close();
+    exit;
 }
-
-$conn->close();
 ?>

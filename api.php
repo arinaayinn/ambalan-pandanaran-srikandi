@@ -1,23 +1,78 @@
 <?php
-error_reporting(0);
+// Tampilkan error JSON yang jelas jika terjadi masalah
+ini_set('display_errors', 0);
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 $host = "localhost";
 $user = "root";
 $pass = "";
 $db   = "db_absen_ambalan";
 
-$conn = new mysqli($host, $user, $pass, $db);
+// Koneksi ke MySQL Server terlebih dahulu
+$conn = @new mysqli($host, $user, $pass);
+
 if ($conn->connect_error) {
     header('Content-Type: application/json');
-    echo json_encode(["status" => "error", "message" => "Koneksi MySQL Gagal: " . $conn->connect_error]);
+    echo json_encode([
+        "status" => "error",
+        "message" => "MySQL XAMPP/Laragon belum menyala! (" . $conn->connect_error . ")"
+    ]);
     exit;
 }
+
+// Otomatis buat database & tabel jika belum diimpor di phpMyAdmin
+$conn->query("CREATE DATABASE IF NOT EXISTS `$db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+$conn->select_db($db);
 $conn->set_charset("utf8mb4");
 
+$conn->query("CREATE TABLE IF NOT EXISTS giat_whitelist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama_lengkap VARCHAR(100) NOT NULL UNIQUE,
+    pin_akses VARCHAR(50) NOT NULL DEFAULT 'ambalan2026'
+)");
+
+$conn->query("INSERT IGNORE INTO giat_whitelist (nama_lengkap, pin_akses) VALUES
+    ('Bagus Setya Danuartha', 'ambalan2026'),
+    ('Keyza Callista Agatha', 'ambalan2026'),
+    ('Azalea Salsabila', 'ambalan2026'),
+    ('Sabria Salvina', 'ambalan2026'),
+    ('Faradiba Fathin A', 'ambalan2026'),
+    ('Melani Aulia Putri', 'ambalan2026'),
+    ('Erneta Sauzani putri', 'ambalan2026')");
+
+$conn->query("CREATE TABLE IF NOT EXISTS absensi_pengibaran (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama_anggota VARCHAR(100) NOT NULL,
+    id_nis VARCHAR(50) NOT NULL,
+    pasukan VARCHAR(100) NOT NULL,
+    tanggal_kegiatan VARCHAR(50) NOT NULL,
+    jam_hadir VARCHAR(30) NOT NULL,
+    status_kehadiran ENUM('Hadir', 'Izin', 'Sakit', 'Alpha') DEFAULT 'Hadir',
+    jenis_surat VARCHAR(50) DEFAULT 'Absensi Lapangan',
+    keterangan TEXT DEFAULT NULL,
+    koordinat_gps VARCHAR(100) DEFAULT NULL,
+    foto_bukti LONGTEXT DEFAULT NULL,
+    status_verifikasi ENUM('Menunggu', 'Disetujui') DEFAULT 'Disetujui',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+// 0. TES KONEKSI API
+if ($action === 'test') {
+    header('Content-Type: application/json');
+    echo json_encode([
+        "status" => "success",
+        "message" => "API PHP dan Database MySQL ($db) Terhubung Sempurna!"
+    ]);
+    exit;
+}
 
 // 1. EKSPOR EXCEL (.XLS)
 if ($action === 'export_excel') {
@@ -110,7 +165,6 @@ if ($action === 'submit_absen') {
     $gps     = trim($data['gps'] ?? '-');
     $foto    = $data['foto'] ?? null;
 
-    // Jika file gambar diunggah via input file FormData
     if (isset($_FILES['file_surat']) && $_FILES['file_surat']['error'] === UPLOAD_ERR_OK) {
         $tmpName = $_FILES['file_surat']['tmp_name'];
         $mime    = mime_content_type($tmpName) ?: 'image/jpeg';

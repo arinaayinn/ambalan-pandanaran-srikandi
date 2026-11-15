@@ -30,3 +30,12 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 ::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
 }
+
+@media print {
+    nav, footer, button, #filter-bar-giat {
+        display: none !important;
+    }
+    body {
+        background: #ffffff !important;
+    }
+}

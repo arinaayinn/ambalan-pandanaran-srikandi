@@ -31,7 +31,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 @media print {
-    nav, footer, button, #filter-bar-giat {
+    nav, footer, button, #filter-bar-giat, #surat-izin-inbox-panel {
         display: none !important;
     }
     body {

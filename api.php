@@ -4,7 +4,6 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Konfigurasi Koneksi Database (Sesuaikan dengan pengaturan XAMPP/Laragon Anda)
 $host = "localhost";
 $user = "root";
 $pass = "";
@@ -20,57 +19,72 @@ if ($conn->connect_error) {
 $action = $_GET['action'] ?? '';
 $input = json_decode(file_get_contents('php://input'), true);
 
-// 1. VALIDASI LOGIN GIAT DARI DATABASE
+// 1. VALIDASI LOGIN GIAT + PIN KEAMANAN
 if ($action === 'login_giat') {
     $nama = trim($input['nama'] ?? '');
+    $pin  = trim($input['pin'] ?? '');
     
-    // Cek kecocokan nama di tabel giat_whitelist (case-insensitive)
-    $stmt = $conn->prepare("SELECT id, nama_lengkap FROM giat_whitelist WHERE LOWER(TRIM(nama_lengkap)) = LOWER(?) LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, nama_lengkap, pin_akses FROM giat_whitelist WHERE LOWER(TRIM(nama_lengkap)) = LOWER(?) LIMIT 1");
     $stmt->bind_param("s", $nama);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($row = $result->fetch_assoc()) {
-        echo json_encode([
-            "status" => "success",
-            "message" => "Akses Giat Diterima",
-            "user" => $row['nama_lengkap']
-        ]);
+        if ($row['pin_akses'] === $pin) {
+            echo json_encode([
+                "status" => "success",
+                "message" => "Akses Giat Diterima",
+                "user" => $row['nama_lengkap']
+            ]);
+        } else {
+            echo json_encode([
+                "status" => "error",
+                "message" => "PIN Keamanan Giat salah!"
+            ]);
+        }
     } else {
         echo json_encode([
             "status" => "error",
-            "message" => "Akses Ditolak! Nama '$nama' tidak terdaftar dalam daftar Giat yang diizinkan."
+            "message" => "Akses Ditolak! Nama '$nama' tidak terdaftar dalam daftar Giat."
         ]);
     }
     $stmt->close();
 }
 
-// 2. SIMPAN ABSENSI DEWAN KE DATABASE
+// 2. SIMPAN ABSENSI HADIR ATAU PENGAJUAN IZIN/SAKIT DEWAN
 elseif ($action === 'submit_absen') {
-    $nama = $input['nama'] ?? '';
+    $nama    = $input['nama'] ?? '';
     $pasukan = $input['pasukan'] ?? '';
     $tanggal = $input['tanggal'] ?? '';
-    $jam = $input['jam'] ?? '';
-    $gps = $input['gps'] ?? '';
-    $foto = $input['foto'] ?? '';
-    $id_nis = "DEW-" . rand(100, 999);
+    $jam     = $input['jam'] ?? '-';
+    $status  = $input['status'] ?? 'Hadir';
+    $ket     = $input['keterangan'] ?? 'Hadir pengibaran';
+    $gps     = $input['gps'] ?? '-';
+    $foto    = $input['foto'] ?? '';
+    $id_nis  = "DEW-" . rand(100, 999);
 
-    $stmt = $conn->prepare("INSERT INTO absensi_pengibaran (nama_anggota, id_nis, pasukan, tanggal_kegiatan, jam_hadir, status_kehadiran, koordinat_gps, foto_bukti) VALUES (?, ?, ?, ?, ?, 'Hadir', ?, ?)");
-    $stmt->bind_param("sssssss", $nama, $id_nis, $pasukan, $tanggal, $jam, $gps, $foto);
+    $stmt = $conn->prepare("INSERT INTO absensi_pengibaran (nama_anggota, id_nis, pasukan, tanggal_kegiatan, jam_hadir, status_kehadiran, keterangan, koordinat_gps, foto_bukti) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssssss", $nama, $id_nis, $pasukan, $tanggal, $jam, $status, $ket, $gps, $foto);
 
     if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Absensi berhasil tersimpan ke database!"]);
+        echo json_encode(["status" => "success", "message" => "Data $status berhasil disimpan ke database!"]);
     } else {
-        echo json_encode(["status" => "error", "message" => "Gagal menyimpan absensi."]);
+        echo json_encode(["status" => "error", "message" => "Gagal menyimpan data."]);
     }
     $stmt->close();
 }
 
-// 3. AMBIL DATA REKAP UNTUK DASHBOARD GIAT
+// 3. AMBIL DATA REKAP & STATISTIK GRAFIK
 elseif ($action === 'get_rekap') {
     $pasukan = $_GET['pasukan'] ?? '';
-    $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran WHERE pasukan = ? ORDER BY id DESC");
-    $stmt->bind_param("s", $pasukan);
+    
+    if ($pasukan === 'SEMUA') {
+        $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran ORDER BY id DESC");
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM absensi_pengibaran WHERE pasukan = ? ORDER BY id DESC");
+        $stmt->bind_param("s", $pasukan);
+    }
+    
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -84,17 +98,30 @@ elseif ($action === 'get_rekap') {
 
 // 4. UPDATE STATUS KEHADIRAN OLEH GIAT
 elseif ($action === 'update_status') {
-    $id = intval($input['id'] ?? 0);
+    $id     = intval($input['id'] ?? 0);
     $status = $input['status'] ?? 'Hadir';
-    $jam = ($status === 'Hadir') ? date("H:i") . " WIB" : "-";
+    $jam    = ($status === 'Hadir') ? date("H:i") . " WIB" : "-";
 
     $stmt = $conn->prepare("UPDATE absensi_pengibaran SET status_kehadiran = ?, jam_hadir = ? WHERE id = ?");
     $stmt->bind_param("ssi", $status, $jam, $id);
 
     if ($stmt->execute()) {
-        echo json_encode(["status" => "success", "message" => "Status berhasil diperbarui di database."]);
+        echo json_encode(["status" => "success", "message" => "Status diperbarui."]);
     } else {
         echo json_encode(["status" => "error", "message" => "Gagal memperbarui status."]);
+    }
+    $stmt->close();
+}
+
+// 5. HAPUS DATA ABSENSI (ADMIN GIAT)
+elseif ($action === 'delete_absen') {
+    $id = intval($input['id'] ?? 0);
+    $stmt = $conn->prepare("DELETE FROM absensi_pengibaran WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        echo json_encode(["status" => "success", "message" => "Data dihapus."]);
+    } else {
+        echo json_encode(["status" => "error", "message" => "Gagal menghapus."]);
     }
     $stmt->close();
 }

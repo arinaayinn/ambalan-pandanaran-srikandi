@@ -1,513 +1,381 @@
-const GIAT_WHITELIST = [
-    "bagus setya danuartha",
-    "keyza callista agatha",
-    "azalea salsabila",
-    "sabria salvina",
-    "faradiba fathin a",
-    "melani aulia putri",
-    "erneta sauzani putri"
-];
-const GIAT_DEFAULT_PIN = "ambalan2026";
-
-let currentUser = { name: "", role: "", pasukan: "1. Petugas Pemimpin Pengibaran", avatar: "" };
-let currentGpsCoords = "Lat: -7.0051, Long: 110.4381 (Area Sekolah)";
+let currentUser = { name: "", role: "", pasukan: "1. Petugas Pemimpin Pengibaran" };
+let currentGpsCoords = "Lat: -7.0051, Long: 110.4381";
 let currentDataMap = {};
 let mediaStream = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    restoreSession();
-});
+function showToast(msg, type = 'success') {
+    const box = document.getElementById('toast-container');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = `${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white px-4 py-3 rounded-2xl shadow-xl text-sm font-bold pointer-events-auto`;
+    el.innerText = msg;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+}
 
-function restoreSession() {
-    const savedSession = localStorage.getItem('ambalan_user_session');
-    if (savedSession) {
-        try {
-            currentUser = JSON.parse(savedSession);
-            if (currentUser && currentUser.name && currentUser.role) {
-                executeLoginSuccess(true);
-            }
-        } catch (e) {
-            localStorage.removeItem('ambalan_user_session');
-        }
+// Helper untuk membuka/menutup modal (mengatur flex & hidden dengan tepat)
+function showModal(id) {
+    const m = document.getElementById(id);
+    if (m) {
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+    }
+}
+function hideModal(id) {
+    const m = document.getElementById(id);
+    if (m) {
+        m.classList.add('hidden');
+        m.classList.remove('flex');
     }
 }
 
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    const bgCol = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-red-600' : 'bg-slate-900');
-    toast.className = `${bgCol} text-white px-4 py-3 rounded-2xl shadow-xl text-sm font-bold flex items-center gap-2 transition-all duration-300 pointer-events-auto`;
-    toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-}
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Tab Login Role
+    document.getElementById('tab-role-giat').addEventListener('click', () => setLoginRole('giat'));
+    document.getElementById('tab-role-dewan').addEventListener('click', () => setLoginRole('dewan'));
 
-// --- LOGIN ---
-function setLoginRole(role) {
-    document.getElementById('login-role-input').value = role;
-    ['giat', 'dewan'].forEach(r => {
-        const btn = document.getElementById(`tab-role-${r}`);
-        btn.className = (r === role)
-            ? "py-3 px-4 text-xs sm:text-sm font-bold rounded-xl transition-all bg-white text-red-600 shadow-sm flex items-center justify-center gap-2"
-            : "py-3 px-4 text-xs sm:text-sm font-bold rounded-xl transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2";
+    // 2. Form Login & Quick Login
+    document.getElementById('form-login').addEventListener('submit', handleLogin);
+    document.getElementById('btn-quick-giat').addEventListener('click', () => {
+        currentUser = { name: "Bagus Setya Danuartha", role: "giat", pasukan: "SEMUA" };
+        localStorage.setItem('ambalan_user_session', JSON.stringify(currentUser));
+        enterDashboard();
+    });
+    document.getElementById('btn-quick-dewan').addEventListener('click', () => {
+        currentUser = { name: "Andika Pratama", role: "dewan", pasukan: "1. Petugas Pemimpin Pengibaran" };
+        localStorage.setItem('ambalan_user_session', JSON.stringify(currentUser));
+        enterDashboard();
+    });
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.removeItem('ambalan_user_session');
+        document.getElementById('app-navbar').classList.add('hidden');
+        document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
+        document.getElementById('view-login').classList.remove('hidden');
     });
 
-    const inputName = document.getElementById('login-username');
-    const labelName = document.getElementById('login-label-name');
-    const hintEl = document.getElementById('login-hint');
-    const pinGroup = document.getElementById('group-giat-pin');
-    const pasukanGroup = document.getElementById('group-pasukan-select');
+    // 3. TOMBOL & FORMULIR IZIN (DIJAMIN BISA DITEKAN)
+    document.getElementById('btn-open-izin').addEventListener('click', () => {
+        document.getElementById('form-pengajuan-izin').reset();
+        showModal('modal-izin');
+    });
+    document.getElementById('btn-close-izin').addEventListener('click', () => hideModal('modal-izin'));
+    document.getElementById('btn-cancel-izin').addEventListener('click', () => hideModal('modal-izin'));
+    document.getElementById('form-pengajuan-izin').addEventListener('submit', handleIzinSubmit);
 
-    if (role === 'giat') {
-        labelName.innerText = "Nama Giat (Terdaftar)";
-        inputName.value = "Bagus Setya Danuartha";
-        hintEl.innerText = "*Hanya 7 nama Giat resmi yang diizinkan masuk.";
-        pinGroup.classList.remove('hidden');
-        pasukanGroup.classList.add('hidden');
-    } else {
-        labelName.innerText = "Nama Lengkap Dewan (Peserta)";
-        inputName.value = "Andika Pratama";
-        hintEl.innerText = "*Masukkan nama lengkap dan pilih pasukan pengibaran.";
-        pinGroup.classList.add('hidden');
-        pasukanGroup.classList.remove('hidden');
+    // 4. Tombol Kamera Hadir
+    document.getElementById('btn-open-camera').addEventListener('click', openCameraModal);
+    document.getElementById('btn-close-camera').addEventListener('click', closeCameraModal);
+    document.getElementById('btn-cancel-camera').addEventListener('click', closeCameraModal);
+    document.getElementById('btn-capture-submit').addEventListener('click', captureAndSubmitAttendance);
+
+    // 5. Tombol Refresh & Ekspor Excel Giat
+    document.getElementById('btn-refresh-dewan').addEventListener('click', loadMyDewanHistory);
+    document.getElementById('btn-refresh-giat').addEventListener('click', renderGiatTable);
+    document.getElementById('btn-export-excel').addEventListener('click', () => {
+        const p = document.getElementById('filter-pasukan-select').value;
+        const s = document.getElementById('filter-status-select').value;
+        window.location.href = `api.php?action=export_excel&pasukan=${encodeURIComponent(p)}&status=${encodeURIComponent(s)}`;
+    });
+
+    // 6. Filter Giat & Modal Preview
+    document.getElementById('filter-pasukan-select').addEventListener('change', renderGiatTable);
+    document.getElementById('filter-status-select').addEventListener('change', renderGiatTable);
+    document.getElementById('search-member-input').addEventListener('keyup', renderGiatTable);
+    document.getElementById('btn-close-preview').addEventListener('click', () => hideModal('modal-photo-preview'));
+
+    // Cek Sesi Tersimpan
+    const saved = localStorage.getItem('ambalan_user_session');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        enterDashboard();
     }
-}
+});
 
-function quickDemoLogin(role) {
-    setLoginRole(role);
-    currentUser = (role === 'giat')
-        ? { name: "Bagus Setya Danuartha", role: "giat", pasukan: "Semua Pasukan", avatar: "BS" }
-        : { name: "Andika Pratama", role: "dewan", pasukan: "1. Petugas Pemimpin Pengibaran", avatar: "AP" };
-    localStorage.setItem('ambalan_user_session', JSON.stringify(currentUser));
-    executeLoginSuccess(false);
+function setLoginRole(role) {
+    document.getElementById('login-role-input').value = role;
+    const isGiat = (role === 'giat');
+    document.getElementById('tab-role-giat').className = isGiat ? "py-3 px-4 text-sm font-bold rounded-xl bg-white text-red-600 shadow-sm" : "py-3 px-4 text-sm font-bold rounded-xl text-slate-600";
+    document.getElementById('tab-role-dewan').className = !isGiat ? "py-3 px-4 text-sm font-bold rounded-xl bg-white text-red-600 shadow-sm" : "py-3 px-4 text-sm font-bold rounded-xl text-slate-600";
+    document.getElementById('group-giat-pin').classList.toggle('hidden', !isGiat);
+    document.getElementById('group-pasukan-select').classList.toggle('hidden', isGiat);
+    document.getElementById('login-label-name').innerText = isGiat ? "Nama Giat (Terdaftar)" : "Nama Lengkap Dewan";
+    document.getElementById('login-username').value = isGiat ? "Bagus Setya Danuartha" : "Andika Pratama";
 }
 
 async function handleLogin(e) {
     e.preventDefault();
     const role = document.getElementById('login-role-input').value;
-    const name = document.getElementById('login-username').value.trim();
+    const nama = document.getElementById('login-username').value.trim();
     const pin  = document.getElementById('login-pin').value.trim();
     const pasukan = document.getElementById('login-class').value;
 
-    if (!name) return showToast("Nama wajib diisi!", "error");
-
     if (role === 'giat') {
-        let verifiedName = name;
         try {
-            const response = await fetch('api.php?action=login_giat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nama: name, pin: pin })
-            });
-            const result = await response.json();
-            if (result.status !== 'success') return showToast(result.message, 'error');
-            verifiedName = result.user;
-        } catch (error) {
-            if (!GIAT_WHITELIST.includes(name.toLowerCase()) || pin !== GIAT_DEFAULT_PIN) {
-                return showToast("Nama Giat tidak terdaftar atau PIN salah!", "error");
-            }
+            const fd = new FormData();
+            fd.append('nama', nama);
+            fd.append('pin', pin);
+            const res = await fetch('api.php?action=login_giat', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.status !== 'success') return showToast(json.message, 'error');
+            currentUser = { name: json.user, role: 'giat', pasukan: 'SEMUA' };
+        } catch (err) {
+            return showToast("Gagal terhubung ke api.php. Pastikan dibuka lewat http://localhost/", "error");
         }
-        currentUser.name = verifiedName;
     } else {
-        currentUser.name = name;
+        currentUser = { name: nama, role: 'dewan', pasukan: pasukan };
     }
 
-    currentUser.role = role;
-    currentUser.pasukan = pasukan;
-    currentUser.avatar = currentUser.name.substring(0, 2).toUpperCase();
     localStorage.setItem('ambalan_user_session', JSON.stringify(currentUser));
-    executeLoginSuccess(false);
+    enterDashboard();
 }
 
-function executeLoginSuccess(isSilent) {
+function enterDashboard() {
     document.getElementById('view-login').classList.add('hidden');
     document.getElementById('app-navbar').classList.remove('hidden');
     document.getElementById('nav-user-name').innerText = currentUser.name;
-    document.getElementById('nav-user-avatar').innerText = currentUser.avatar;
-    document.getElementById('nav-role-subtitle').innerText = (currentUser.role === 'dewan') ? `Dewan (${currentUser.pasukan})` : `Giat Terverifikasi`;
-
     document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
+
     if (currentUser.role === 'dewan') {
         document.getElementById('view-dashboard-dewan').classList.remove('hidden');
-        document.getElementById('dewan-welcome-title').innerText = `Halo, ${currentUser.name}! 👋`;
+        document.getElementById('dewan-welcome-title').innerText = `Halo, ${currentUser.name}!`;
         document.getElementById('dewan-pasukan-subtitle').innerText = `Pasukan: ${currentUser.pasukan}`;
-        document.getElementById('wm-name').innerText = `${currentUser.name} (${currentUser.pasukan})`;
         loadMyDewanHistory();
     } else {
         document.getElementById('view-dashboard-giat').classList.remove('hidden');
         renderGiatTable();
     }
-    if (!isSilent) showToast(`Selamat datang, ${currentUser.name}!`, 'success');
 }
 
-function logout() {
-    localStorage.removeItem('ambalan_user_session');
-    document.getElementById('app-navbar').classList.add('hidden');
-    document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
-    document.getElementById('view-login').classList.remove('hidden');
+// --- KIRIM FORMULIR IZIN KE DATABASE & GIAT ---
+async function handleIzinSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-izin');
+    btn.disabled = true;
+    btn.innerText = "Mengirim ke Database...";
+
+    const statusIzin = document.getElementById('izin-status-select').value;
+    const alasan = document.getElementById('izin-reason-input').value.trim();
+    const fileInput = document.getElementById('izin-file-input');
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
+
+    const formData = new FormData();
+    formData.append('nama', currentUser.name);
+    formData.append('pasukan', currentUser.pasukan);
+    formData.append('tanggal', dateStr);
+    formData.append('jam', '-');
+    formData.append('status', statusIzin);
+    formData.append('keterangan', alasan);
+    formData.append('gps', `Surat Izin Mandiri (${timeStr})`);
+
+    if (fileInput.files && fileInput.files[0]) {
+        formData.append('file_surat', fileInput.files[0]);
+    }
+
+    try {
+        const res = await fetch('api.php?action=submit_absen', {
+            method: 'POST',
+            body: formData
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            showToast(json.message, 'success');
+            hideModal('modal-izin');
+            loadMyDewanHistory();
+        } else {
+            showToast("Gagal: " + json.message, 'error');
+        }
+    } catch (err) {
+        showToast("Error Koneksi! Pastikan URL browser diawali http://localhost/", 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane mr-1"></i> Kirim Surat Izin`;
+    }
 }
 
 // --- RIWAYAT DEWAN ---
 async function loadMyDewanHistory() {
-    const historyList = document.getElementById('dewan-history-list');
+    const list = document.getElementById('dewan-history-list');
     try {
         const res = await fetch(`api.php?action=get_my_history&nama=${encodeURIComponent(currentUser.name)}`);
         const json = await res.json();
-        historyList.innerHTML = '';
+        list.innerHTML = '';
 
         if (!json.data || json.data.length === 0) {
-            historyList.innerHTML = `<div class="text-xs text-slate-400 text-center py-6">Belum ada riwayat absensi atau surat pengajuan izin.</div>`;
+            list.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada riwayat absensi atau surat izin.</p>`;
             return;
         }
 
-        const latest = json.data[0];
-        document.getElementById('dewan-status-badge-today').innerText = `${latest.status_kehadiran} (${latest.status_verifikasi})`;
-        document.getElementById('dewan-status-time-today').innerText = `${latest.tanggal_kegiatan}`;
+        document.getElementById('dewan-status-badge-today').innerText = `${json.data[0].status_kehadiran} (${json.data[0].status_verifikasi})`;
 
-        json.data.forEach((item) => {
+        json.data.forEach(item => {
             currentDataMap[item.id] = item;
-            const badgeCol = item.status_kehadiran === 'Hadir' ? 'text-emerald-700 bg-emerald-100' : 'text-amber-800 bg-amber-100';
             const div = document.createElement('div');
-            div.className = "p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-4";
+            div.className = "p-4 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center gap-3";
             div.innerHTML = `
                 <div>
-                    <div class="font-bold text-slate-900 text-sm">${item.jenis_surat} — ${item.tanggal_kegiatan}</div>
-                    <div class="text-xs text-slate-600 mt-1">
-                        <span class="px-2 py-0.5 rounded font-bold ${badgeCol}">${item.status_kehadiran}</span>
-                        <span class="ml-2 font-semibold text-slate-700">Verifikasi Giat: ${item.status_verifikasi}</span>
-                    </div>
-                    <div class="text-xs text-slate-500 mt-1">Alasan: ${item.keterangan || '-'}</div>
+                    <div class="font-bold text-sm text-slate-900">${item.jenis_surat} — ${item.tanggal_kegiatan}</div>
+                    <div class="text-xs text-slate-600 mt-1">Status: <b>${item.status_kehadiran}</b> • Verifikasi Giat: <b>${item.status_verifikasi}</b></div>
+                    <div class="text-xs text-slate-500 mt-0.5">Alasan: ${item.keterangan || '-'}</div>
                 </div>
-                ${item.foto_bukti ? `<button type="button" onclick="openPhotoPreviewById(${item.id})" class="px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-100 shrink-0"><i class="fa-solid fa-image text-red-600 mr-1"></i> Lihat Lampiran</button>` : ''}
+                ${item.foto_bukti ? `<button type="button" onclick="openPreview(${item.id})" class="px-3 py-2 bg-white border rounded-xl text-xs font-bold cursor-pointer">Lihat Lampiran</button>` : ''}
             `;
-            historyList.appendChild(div);
+            list.appendChild(div);
         });
     } catch (e) {
-        historyList.innerHTML = `<div class="text-xs text-red-500 text-center py-4">Gagal terhubung ke database PHP.</div>`;
+        list.innerHTML = `<p class="text-xs text-red-500 text-center py-4">Gagal terhubung ke database PHP.</p>`;
     }
 }
 
-// --- KAMERA ABSEN HADIR ---
-function openAttendanceModal() {
-    document.getElementById('modal-camera').classList.remove('hidden');
-    const now = new Date();
-    document.getElementById('wm-time').innerText = now.toLocaleString('id-ID');
-
+// --- KAMERA HADIR ---
+function openCameraModal() {
+    showModal('modal-camera');
     if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                currentGpsCoords = `Lat: ${pos.coords.latitude.toFixed(5)}, Long: ${pos.coords.longitude.toFixed(5)}`;
-                document.getElementById('wm-gps').innerText = currentGpsCoords;
-            },
-            () => { document.getElementById('wm-gps').innerText = currentGpsCoords; }
-        );
+        navigator.geolocation.getCurrentPosition(pos => {
+            currentGpsCoords = `Lat: ${pos.coords.latitude.toFixed(5)}, Long: ${pos.coords.longitude.toFixed(5)}`;
+            document.getElementById('wm-gps').innerText = currentGpsCoords;
+        });
     }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
-        .then(stream => { mediaStream = stream; document.getElementById('webcam-video').srcObject = stream; })
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(s => { mediaStream = s; document.getElementById('webcam-video').srcObject = s; })
         .catch(() => {});
 }
 
 function closeCameraModal() {
-    document.getElementById('modal-camera').classList.add('hidden');
+    hideModal('modal-camera');
     if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
 }
 
 async function captureAndSubmitAttendance() {
     const video = document.getElementById('webcam-video');
     const canvas = document.getElementById('snapshot-canvas');
-    const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
-
-    if (video.readyState >= 2) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    } else {
-        ctx.fillStyle = "#1E293B";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 20px sans-serif";
-        ctx.fillText("ABSENSI PENGIBARAN AMBALAN", 30, 240);
-    }
+    const ctx = canvas.getContext('2d');
+    if (video.readyState >= 2) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    else { ctx.fillStyle = "#1e293b"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
     const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
 
-    const res = await fetch('api.php?action=submit_absen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            nama: currentUser.name,
-            pasukan: currentUser.pasukan,
-            tanggal: dateStr,
-            jam: timeStr,
-            status: "Hadir",
-            keterangan: "Hadir pengibaran (Kamera & GPS)",
-            gps: currentGpsCoords,
-            foto: canvas.toDataURL('image/jpeg', 0.7)
-        })
-    });
+    const fd = new FormData();
+    fd.append('nama', currentUser.name);
+    fd.append('pasukan', currentUser.pasukan);
+    fd.append('tanggal', dateStr);
+    fd.append('jam', timeStr);
+    fd.append('status', 'Hadir');
+    fd.append('keterangan', 'Hadir pengibaran (Kamera GPS)');
+    fd.append('gps', currentGpsCoords);
+    fd.append('foto', canvas.toDataURL('image/jpeg', 0.7));
+
+    const res = await fetch('api.php?action=submit_absen', { method: 'POST', body: fd });
     const json = await res.json();
     if (json.status === 'success') {
-        showToast(json.message, "success");
+        showToast(json.message, 'success');
         closeCameraModal();
         loadMyDewanHistory();
     } else {
-        showToast(json.message, "error");
+        showToast(json.message, 'error');
     }
 }
 
-// --- KIRIM SURAT PENGAJUAN IZIN / SAKIT ---
-function openIzinModal() {
-    document.getElementById('form-pengajuan-izin').reset();
-    clearIzinAttachment();
-    document.getElementById('modal-izin').classList.remove('hidden');
-}
-
-function closeIzinModal() {
-    document.getElementById('modal-izin').classList.add('hidden');
-}
-
-function previewIzinAttachment(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        document.getElementById('izin-attachment-preview-img').src = e.target.result;
-        document.getElementById('izin-attachment-preview-box').classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
-}
-
-function clearIzinAttachment() {
-    document.getElementById('izin-file-input').value = '';
-    document.getElementById('izin-attachment-preview-img').src = '';
-    document.getElementById('izin-attachment-preview-box').classList.add('hidden');
-}
-
-function compressImageFile(file, maxWidth = 800) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                if (width > maxWidth) {
-                    height = Math.round((height * maxWidth) / width);
-                    width = maxWidth;
-                }
-                canvas.width = width;
-                canvas.height = height;
-                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-async function submitIzinForm(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btn-submit-izin');
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...`;
-
-    const statusIzin = document.querySelector('input[name="izin-status-radio"]:checked').value;
-    const alasan = document.getElementById('izin-reason-input').value.trim();
-    const fileInput = document.getElementById('izin-file-input');
-
-    let lampiranBase64 = null;
-    if (fileInput.files && fileInput.files[0]) {
-        lampiranBase64 = await compressImageFile(fileInput.files[0]);
-    }
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
-    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
-
-    try {
-        const response = await fetch('api.php?action=submit_absen', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                nama: currentUser.name,
-                pasukan: currentUser.pasukan,
-                tanggal: dateStr,
-                jam: "-",
-                status: statusIzin,
-                keterangan: alasan,
-                gps: "Surat Pengajuan Mandiri (" + timeStr + ")",
-                foto: lampiranBase64
-            })
-        });
-        const json = await response.json();
-        if (json.status === 'success') {
-            showToast(json.message, "success");
-            closeIzinModal();
-            loadMyDewanHistory();
-        } else {
-            showToast(json.message, "error");
-        }
-    } catch (err) {
-        showToast("Gagal mengirim surat ke database. Pastikan server XAMPP menyala.", "error");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Kirim Surat ke Giat`;
-    }
-}
-
-// --- DASHBOARD GIAT: KOTAK MASUK SURAT IZIN + TABEL + EKSPOR EXCEL ---
+// --- DASHBOARD GIAT ---
 async function renderGiatTable() {
-    const selectedPasukan = document.getElementById('filter-pasukan-select').value;
-    const selectedStatus  = document.getElementById('filter-status-select').value;
-    const searchKeyword   = document.getElementById('search-member-input').value.toLowerCase().trim();
+    const pasukan = document.getElementById('filter-pasukan-select').value;
+    const statusFilter = document.getElementById('filter-status-select').value;
+    const search = document.getElementById('search-member-input').value.toLowerCase().trim();
 
     const tbody = document.getElementById('giat-tbody');
-    const inboxContainer = document.getElementById('giat-surat-izin-list');
+    const inbox = document.getElementById('giat-surat-izin-list');
 
     try {
-        const res = await fetch(`api.php?action=get_rekap&pasukan=${encodeURIComponent(selectedPasukan)}`);
+        const res = await fetch(`api.php?action=get_rekap&pasukan=${encodeURIComponent(pasukan)}`);
         const json = await res.json();
-        const rawMembers = json.data || [];
+        const allData = json.data || [];
 
-        // 1. Render Kotak Masuk Khusus Surat Izin / Sakit
-        const suratIzinList = rawMembers.filter(m => m.status_kehadiran === 'Izin' || m.status_kehadiran === 'Sakit');
-        document.getElementById('badge-jumlah-surat').innerText = `${suratIzinList.length} Surat Masuk`;
-        inboxContainer.innerHTML = '';
+        // Kotak Masuk Surat Izin
+        const suratList = allData.filter(d => d.status_kehadiran === 'Izin' || d.status_kehadiran === 'Sakit');
+        document.getElementById('badge-jumlah-surat').innerText = `${suratList.length} Surat Masuk`;
+        inbox.innerHTML = suratList.length === 0
+            ? `<p class="text-xs text-amber-800 col-span-full">Belum ada surat izin/sakit masuk.</p>`
+            : '';
 
-        if (suratIzinList.length === 0) {
-            inboxContainer.innerHTML = `<div class="col-span-full text-xs text-amber-800 py-2">Belum ada surat pengajuan izin/sakit yang masuk.</div>`;
-        } else {
-            suratIzinList.forEach(s => {
-                currentDataMap[s.id] = s;
-                const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between gap-3";
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start gap-2">
-                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${s.status_kehadiran === 'Sakit' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}">
-                                Surat ${s.status_kehadiran}
-                            </span>
-                            <span class="text-[11px] font-bold ${s.status_verifikasi === 'Disetujui' ? 'text-emerald-600' : 'text-red-500'}">
-                                ${s.status_verifikasi}
-                            </span>
-                        </div>
-                        <div class="font-bold text-slate-900 text-sm mt-2">${s.nama_anggota}</div>
-                        <div class="text-[11px] text-slate-500">${s.pasukan} • ${s.tanggal_kegiatan}</div>
-                        <div class="mt-2 p-2.5 bg-slate-50 rounded-xl text-xs text-slate-700 border border-slate-100">
-                            "${s.keterangan || '-'}"
-                        </div>
+        suratList.forEach(s => {
+            currentDataMap[s.id] = s;
+            const card = document.createElement('div');
+            card.className = "bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex flex-col justify-between gap-3";
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between text-xs font-bold">
+                        <span class="text-amber-700">${s.jenis_surat}</span>
+                        <span class="${s.status_verifikasi === 'Disetujui' ? 'text-emerald-600' : 'text-red-500'}">${s.status_verifikasi}</span>
                     </div>
-                    <div class="flex gap-2 pt-1">
-                        ${s.foto_bukti ? `<button type="button" onclick="openPhotoPreviewById(${s.id})" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs"><i class="fa-solid fa-image text-red-600 mr-1"></i> Lihat Surat</button>` : ''}
-                        <button type="button" onclick="changeMemberStatus(${s.id}, '${s.status_kehadiran}')" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs">
-                            <i class="fa-solid fa-check mr-1"></i> Terima Surat
-                        </button>
-                    </div>
-                `;
-                inboxContainer.appendChild(card);
-            });
-        }
-
-        // 2. Filter Tabel Utama
-        const filteredMembers = rawMembers.filter(m => {
-            const matchStatus = (selectedStatus === 'SEMUA') || (m.status_kehadiran === selectedStatus);
-            const matchName = !searchKeyword || m.nama_anggota.toLowerCase().includes(searchKeyword);
-            return matchStatus && matchName;
+                    <div class="font-bold text-slate-900 text-sm mt-1">${s.nama_anggota}</div>
+                    <div class="text-[11px] text-slate-500">${s.pasukan} • ${s.tanggal_kegiatan}</div>
+                    <div class="mt-2 p-2.5 bg-slate-50 rounded-xl text-xs text-slate-700">"${s.keterangan || '-'}"</div>
+                </div>
+                <div class="flex gap-2">
+                    ${s.foto_bukti ? `<button type="button" onclick="openPreview(${s.id})" class="flex-1 py-2 bg-slate-100 font-bold rounded-xl text-xs cursor-pointer">Lihat Surat</button>` : ''}
+                    <button type="button" onclick="verifyStatus(${s.id}, '${s.status_kehadiran}')" class="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs cursor-pointer">Terima Surat</button>
+                </div>
+            `;
+            inbox.appendChild(card);
         });
 
+        // Tabel Utama
+        const filtered = allData.filter(m => {
+            const matchS = (statusFilter === 'SEMUA') || (m.status_kehadiran === statusFilter);
+            const matchN = !search || m.nama_anggota.toLowerCase().includes(search);
+            return matchS && matchN;
+        });
+
+        document.getElementById('table-count-label').innerText = `${filtered.length} data dari database`;
         tbody.innerHTML = '';
-        let hadirCount = 0, izinSakitCount = 0, alphaCount = 0;
 
-        filteredMembers.forEach((m) => {
+        filtered.forEach(m => {
             currentDataMap[m.id] = m;
-            const status = m.status_kehadiran;
-            if (status === 'Hadir') hadirCount++;
-            else if (status === 'Izin' || status === 'Sakit') izinSakitCount++;
-            else alphaCount++;
-
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-slate-50 border-b border-slate-100";
             tr.innerHTML = `
-                <td class="p-4">
-                    <div class="font-bold text-slate-900">${m.nama_anggota}</div>
-                    <div class="text-[11px] text-slate-500">${m.pasukan} (${m.id_nis})</div>
-                </td>
-                <td class="p-4">
-                    <div class="text-xs font-semibold text-slate-800">${m.tanggal_kegiatan}</div>
-                    <div class="text-[11px] text-slate-500">Jam: ${m.jam_hadir}</div>
-                </td>
-                <td class="p-4">
-                    <span class="text-[11px] font-bold text-slate-700 block">${m.jenis_surat}</span>
-                    <span class="text-xs text-slate-600">${m.keterangan || '-'}</span>
-                </td>
-                <td class="p-4">
-                    ${m.foto_bukti ? `<button type="button" onclick="openPhotoPreviewById(${m.id})" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-100"><i class="fa-solid fa-file-image text-red-600 mr-1"></i> Lihat Lampiran</button>` : '<span class="text-xs text-slate-400">Tidak ada</span>'}
-                </td>
+                <td class="p-4"><div class="font-bold text-slate-900">${m.nama_anggota}</div><div class="text-xs text-slate-500">${m.pasukan}</div></td>
+                <td class="p-4 text-xs"><div>${m.tanggal_kegiatan}</div><div class="text-slate-500">${m.jam_hadir}</div></td>
+                <td class="p-4 text-xs"><div class="font-bold">${m.jenis_surat}</div><div class="text-slate-600">${m.keterangan || '-'}</div></td>
+                <td class="p-4">${m.foto_bukti ? `<button type="button" onclick="openPreview(${m.id})" class="px-3 py-1.5 border rounded-xl text-xs font-bold cursor-pointer">Lihat Lampiran</button>` : '-'}</td>
                 <td class="p-4 text-center">
-                    <div class="inline-flex rounded-xl p-1 bg-slate-100 gap-1">
-                        <button type="button" onclick="changeMemberStatus(${m.id}, 'Hadir')" class="px-2.5 py-1 text-xs font-bold rounded-lg ${status === 'Hadir' ? 'bg-emerald-600 text-white' : 'text-slate-600'}">Hadir</button>
-                        <button type="button" onclick="changeMemberStatus(${m.id}, 'Izin')" class="px-2.5 py-1 text-xs font-bold rounded-lg ${status === 'Izin' ? 'bg-amber-500 text-white' : 'text-slate-600'}">Izin</button>
-                        <button type="button" onclick="changeMemberStatus(${m.id}, 'Sakit')" class="px-2.5 py-1 text-xs font-bold rounded-lg ${status === 'Sakit' ? 'bg-blue-600 text-white' : 'text-slate-600'}">Sakit</button>
-                        <button type="button" onclick="changeMemberStatus(${m.id}, 'Alpha')" class="px-2.5 py-1 text-xs font-bold rounded-lg ${status === 'Alpha' ? 'bg-red-600 text-white' : 'text-slate-600'}">Alpha</button>
-                    </div>
-                    <div class="text-[10px] font-bold mt-1 ${m.status_verifikasi === 'Disetujui' ? 'text-emerald-600' : 'text-amber-600'}">
-                        ${m.status_verifikasi}
+                    <div class="inline-flex bg-slate-100 p-1 rounded-xl gap-1">
+                        ${['Hadir','Izin','Sakit','Alpha'].map(st => `
+                            <button type="button" onclick="verifyStatus(${m.id}, '${st}')" class="px-2 py-1 text-xs font-bold rounded-lg cursor-pointer ${m.status_kehadiran === st ? 'bg-red-600 text-white' : 'text-slate-600'}">${st}</button>
+                        `).join('')}
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
         });
-
-        document.getElementById('table-count-label').innerText = `Menampilkan ${filteredMembers.length} data dari database`;
-        document.getElementById('stat-giat-hadir').innerText = `${hadirCount} Anggota`;
-        document.getElementById('stat-giat-izin').innerText = `${izinSakitCount} Surat`;
-        document.getElementById('stat-giat-alpha').innerText = `${alphaCount} Anggota`;
-        const pct = filteredMembers.length > 0 ? Math.round((hadirCount / filteredMembers.length) * 100) : 0;
-        document.getElementById('stat-giat-persen').innerText = `${pct}%`;
-
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-500 text-xs font-bold">Gagal mengambil data dari database. Pastikan dibuka via http://localhost/absen-ambalan/index.html</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-500 text-xs font-bold">Gagal mengambil data dari database. Pastikan dibuka via http://localhost/</td></tr>`;
     }
 }
 
-async function changeMemberStatus(dbId, newStatus) {
-    const res = await fetch('api.php?action=update_status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: dbId, status: newStatus })
-    });
+async function verifyStatus(id, status) {
+    const fd = new FormData();
+    fd.append('id', id);
+    fd.append('status', status);
+    const res = await fetch('api.php?action=update_status', { method: 'POST', body: fd });
     const json = await res.json();
     if (json.status === 'success') {
-        renderGiatTable();
         showToast(json.message, 'success');
+        renderGiatTable();
     }
 }
 
-// --- UNDUH EXCEL LANGSUNG DARI DATABASE MYSQL ---
-function exportDatabaseToExcel() {
-    const selectedPasukan = document.getElementById('filter-pasukan-select').value;
-    const selectedStatus  = document.getElementById('filter-status-select').value;
-    const url = `api.php?action=export_excel&pasukan=${encodeURIComponent(selectedPasukan)}&status=${encodeURIComponent(selectedStatus)}`;
-    window.location.href = url;
-    showToast("Mengunduh laporan Excel (.XLS) dari database...", "success");
-}
-
-// --- PREVIEW LAMPIRAN FOTO / SURAT ---
-function openPhotoPreviewById(id) {
+function openPreview(id) {
     const item = currentDataMap[id];
     if (!item || !item.foto_bukti) return;
     document.getElementById('preview-photo-img').src = item.foto_bukti;
     document.getElementById('preview-photo-title').innerText = `${item.jenis_surat} — ${item.nama_anggota}`;
-    document.getElementById('preview-photo-subtitle').innerText = `${item.pasukan} • ${item.tanggal_kegiatan}`;
-    document.getElementById('preview-photo-gps').innerText = `Alasan / Info: ${item.keterangan || item.koordinat_gps || '-'}`;
-    document.getElementById('modal-photo-preview').classList.remove('hidden');
-}
-
-function closePhotoPreview() {
-    document.getElementById('modal-photo-preview').classList.add('hidden');
+    document.getElementById('preview-photo-desc').innerText = `Alasan: ${item.keterangan || '-'}`;
+    showModal('modal-photo-preview');
 }
